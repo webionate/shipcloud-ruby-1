@@ -82,6 +82,22 @@ describe Shipcloud::Shipment do
         and_return("id" => "123")
       Shipcloud::Shipment.find("123")
     end
+
+    it "makes a new GET request and receives a specific shipment with purchase_price" do
+      stub_shipment_requests(shipment_response_with_purchase_price)
+
+      shipment = Shipcloud::Shipment.find("123")
+
+      expect(shipment.purchase_price).not_to be_nil
+    end
+
+    it "makes a new GET request and receives a specific shipment without purchase_price" do
+      stub_shipment_requests(shipment_response_without_purchase_price)
+
+      shipment = Shipcloud::Shipment.find("123")
+
+      expect(shipment.purchase_price).to be_nil
+    end
   end
 
   describe ".update" do
@@ -119,6 +135,21 @@ describe Shipcloud::Shipment do
       end
     end
 
+    it "returns a purchase_price if existing of Shipment objects" do
+      stub_shipments_requests
+
+      shipments = Shipcloud::Shipment.all
+
+      shipments.each do |shipment|
+        purchase_price = shipment.purchase_price
+        if purchase_price
+          expect(purchase_price).to be_a Hash
+        else
+          expect(purchase_price).to be_nil
+        end
+      end
+    end
+
     it "returns a filtered list of Shipment objects when using filter parameters" do
       filter = {
         "carrier" => "dhl",
@@ -142,6 +173,12 @@ describe Shipcloud::Shipment do
     allow(Shipcloud).to receive(:request).
       with(:get, "shipments", {}, api_key: nil).
       and_return("shipments" => shipments_array)
+  end
+
+  def stub_shipment_requests(response)
+    allow(Shipcloud).to receive(:request).
+      with(:get, "shipments/123", {}, api_key: nil).
+      and_return(response)
   end
 
   def shipments_array
@@ -177,7 +214,40 @@ describe Shipcloud::Shipment do
           "width" => 10.0,
           "height" => 10.0,
           "weight" => 1.5
-        }
+        },
+        "purchase_price" => {
+          "preliminary" => {
+            "line_items" => [
+              {
+                "amount_net" => 12.90,
+                "currency" => "EUR",
+                "category" => "shipping"
+              },
+            ],
+            "total" => {
+              "amount_net" => 12.90,
+              "currency" => "EUR",
+            },
+          },
+          "invoiced" => {
+            "line_items" => [
+              {
+                "amount_net" => 12.90,
+                "currency" => "EUR",
+                "category" => "shipping"
+              },
+              {
+                "amount_net" => 1.60,
+                "currency" => "EUR",
+                "category" => "fuel"
+              },
+            ],
+            "total" => {
+              "amount_net" => 14.50,
+              "currency" => "EUR",
+            },
+          },
+        },
       },
       { "id" => "be81573799958587ae891b983aabf9c4089fc462",
         "carrier_tracking_no" => "1Z12345E1305277940",
@@ -213,5 +283,112 @@ describe Shipcloud::Shipment do
         }
       }
     ]
+  end
+
+  def shipment_response_with_purchase_price
+    {
+      "id" => "86afb143f9c9c0cfd4eb7a7c26a5c616585a6271",
+      "carrier_tracking_no" => "43128000105",
+      "carrier" => "hermes",
+      "service" => "standard",
+      "created_at" => "2014-11-12T14:03:45+01:00",
+      "price" => 3.5,
+      "tracking_url" => "http://track.shipcloud.dev/de/86afb143f9",
+      "to" => {
+        "first_name" => "Hans",
+        "last_name" => "Meier",
+        "street" => "Semmelweg",
+        "street_no" => "1",
+        "zip_code" => "12345",
+        "city" => "Hamburg",
+        "country" => "DE"
+      },
+      "from" => {
+        "company" => "webionate GmbH",
+        "last_name" => "Fahlbusch",
+        "street" => "Lüdmoor",
+        "street_no" => "35a",
+        "zip_code" => "22175",
+        "city" => "Hamburg",
+        "country" => "DE"
+      },
+      "packages" => {
+        "id" => "be81573799958587ae891b983aabf9c4089fc462",
+        "length" => 10.0,
+        "width" => 10.0,
+        "height" => 10.0,
+        "weight" => 1.5
+      },
+      "purchase_price" => {
+        "preliminary" => {
+          "line_items" => [
+            {
+              "amount_net" => 12.90,
+              "currency" => "EUR",
+              "category" => "shipping"
+            },
+          ],
+          "total" => {
+            "amount_net" => 12.90,
+            "currency" => "EUR",
+          },
+        },
+        "invoiced" => {
+          "line_items" => [
+            {
+              "amount_net" => 12.90,
+              "currency" => "EUR",
+              "category" => "shipping"
+            },
+            {
+              "amount_net" => 1.60,
+              "currency" => "EUR",
+              "category" => "fuel"
+            },
+          ],
+          "total" => {
+            "amount_net" => 14.50,
+            "currency" => "EUR",
+          },
+        },
+      },
+    }
+  end
+
+  def shipment_response_without_purchase_price
+    {
+      "id" => "be81573799958587ae891b983aabf9c4089fc462",
+      "carrier_tracking_no" => "1Z12345E1305277940",
+      "carrier" => "ups",
+      "service" => "standard",
+      "created_at" => "2014-11-12T14:03:45+01:00",
+      "price" => 3.0,
+      "tracking_url" => "http://track.shipcloud.dev/de/be598a2fd2",
+      "to" => {
+        "first_name" => "Test",
+        "last_name" => "Kunde",
+        "street" => "Gluckstr.",
+        "street_no" => "57",
+        "zip_code" => "22081",
+        "city" => "Hamburg",
+        "country" => "DE"
+      },
+      "from" => {
+        "company" => "webionate GmbH",
+        "last_name" => "Fahlbusch",
+        "street" => "Lüdmoor",
+        "street_no" => "35a",
+        "zip_code" => "22175",
+        "city" => "Hamburg",
+        "country" => "DE"
+      },
+      "packages" => {
+        "id" => "74d4f1fc193d8a7ca542d1ee4e2021f3ddb82242",
+        "length" => 15.0,
+        "width" => 20.0,
+        "height" => 10.0,
+        "weight" => 2.0
+      }
+    }
   end
 end
